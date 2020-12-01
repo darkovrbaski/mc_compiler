@@ -1,3 +1,13 @@
+# Bison and Flex compiled files
+.make.outb
+.make.outf
+.make.outg
+lex.yy.c
+semantic
+semantic.output
+semantic.tab.c
+semantic.tab.h
+
 # Prerequisites
 *.d
 
