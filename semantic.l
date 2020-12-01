@@ -35,8 +35,8 @@
 
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }
-"*"						{ yylval.i = MUL; return _AROP; }
-"/"						{ yylval.i = DIV; return _AROP; }
+"*"						{ yylval.i = MUL; return _MDOP; }
+"/"						{ yylval.i = DIV; return _MDOP; }
 "++"						{ return _INC;}
 
 "<"                  { yylval.i = LT; return _RELOP; }
@@ -56,24 +56,7 @@
 
 \/\/.*               { /* skip single line coments (//) */ }
 
-"/*" {		/* skip multi line coments (//) */
-	char c;
-	for (;;) {
-		while ((c = input()) != '*' && c != EOF)
-			; /* preskoci tekst komentara */
-		if (c == '*') {
-			while ((c = input()) == '*')
-				;
-			if (c == '/')
-				break; /* kraj komentara */
-		}
-		if (c == EOF) {
-			printf("line %d: LEXICAL ERROR EOF in comment on char %c\n", 
-            	yylineno, *yytext);
-			break;
-		}
-	}
-}
+"/*"([^*]|"\n"|(\*+([^*/]|"\n")))*"*"+"/" { /* skip multi line coments (//) */ }
 
 .                    { printf("line %d: LEXICAL ERROR on char %c\n"
 								, yylineno, *yytext);}

@@ -62,11 +62,15 @@
 %token _ARROW
 %token _FINISH
 %token _TOERANA
+%token <i> _MDOP
 
 %type <i> num_exp exp literal function_call rel_exp argument_list
 
 %nonassoc ONLY_IF
 %nonassoc _ELSE
+
+%left _AROP
+%left _MDOP
 
 %%
 
@@ -212,11 +216,16 @@ increment_statement
 
 num_exp
   : exp
-  | num_exp _AROP exp
+  | num_exp op exp
       {
         if(get_type($1) != get_type($3))
           err("invalid operands: arithmetic operation");
       }
+  ;
+  
+op
+  : _AROP
+  | _MDOP
   ;
 
 exp
