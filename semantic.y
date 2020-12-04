@@ -25,10 +25,6 @@
   
   int return_exist = 0;
   
-  int for_idx[100];
-  int for_num = 0;
-  
-  int jiro_consts[100];
   int jiro_num = 0;
 %}
 
@@ -65,6 +61,7 @@
 %token <i> _MDOP
 
 %type <i> num_exp exp literal function_call rel_exp argument_list
+			 tranga_lit tranga tranga_list
 
 %nonassoc ONLY_IF
 %nonassoc _ELSE
@@ -336,8 +333,7 @@ for_statement
   		{
   		  if($3 != get_type($6))
   		  		err("incompatible types in assignment");
-  		  		
-  		  for_idx[++for_num] = insert_symbol($4, VAR, $3, NO_ATR, NO_ATR);
+  		  $<i>$ = insert_symbol($4, VAR, $3, NO_ATR, NO_ATR);
       }
    _SEMICOLON rel_exp _SEMICOLON literal 
    	{
@@ -348,45 +344,74 @@ for_statement
    	}
    _RPAREN statement
    	{
-   		clear_symbols(for_idx[for_num] - 1);
-   		for_num--;
+   		clear_symbols($<i>7 - 1);
    	}
   ;
   
 jiro_statement
-  : _JIRO _LSBRAC _ID _RSBRAC _LBRACKET tranga_list toerana _RBRACKET
-  		{
+  : _JIRO _LSBRAC _ID
+  		{ 
   			int idx = lookup_symbol($3, VAR|PAR);
   			if (idx == NO_INDEX)
   				err("'%s' undeclared", $3);
-  			
-  			for (int i = 0; i < jiro_num; i++) {
-  				if (get_type(idx) != get_type(jiro_consts[i]))
-  					err("incompatible types in <jiro_expression>");
+  			$<i>$ = get_last_element();
+  			jiro_num++;
+  		}
+    _RSBRAC _LBRACKET tranga_list toerana _RBRACKET
+  		{
+  			int idx = lookup_symbol($3, VAR|PAR);
+  			if (get_type(idx) != $7) {
+  				err("incompatible types in <jiro_expression>");
   			}
-  			
-  			jiro_num = 0;
+  			jiro_num--;
+  			clear_symbols($<i>4 + 1);
   		}
   ;
   
 tranga_list
-  : tranga 
+  : tranga
+  		{
+  			$$ = $1;
+  		}
   | tranga_list tranga
+  		{
+  			$$ = $1;
+  			if ($1 != $2) {
+  				err("incompatible type in <constant_expression>");
+  			}
+  		}
   ;
   
 tranga
-  : _TRANGA literal 
+  : _TRANGA tranga_lit _ARROW statement finish
   		{
-  			jiro_consts[jiro_num] = $2;
-  			
-  			for (int i = 0; i < jiro_num; i++) {
-  				if ($2 == jiro_consts[i])
-  					err("invalid literal, constant %s is not unique value", get_name($2));
-  			}
-  			
-  			jiro_num++; 
+  			$$ = $2;
   		}
-  	 _ARROW statement finish
+  ;
+  
+tranga_lit
+  : _INT_NUMBER
+  		{
+  			int idx = lookup_symbol($1, LIT);
+  			if(idx == NO_INDEX)
+  				insert_symbol($1, LIT, INT, NO_ATR, jiro_num);
+         else if (get_atr2(idx) != jiro_num)
+         	insert_symbol($1, LIT, INT, NO_ATR, jiro_num);
+         else 
+           err("invalid literal, constant %s is not unique value", $1);
+         $$ = INT;
+  		}
+  | _UINT_NUMBER
+  		{
+  			int idx = lookup_symbol($1, LIT);
+  			if(idx == NO_INDEX)
+  				insert_symbol($1, LIT, UINT, NO_ATR, jiro_num);
+         else if (get_atr2(idx) != jiro_num)
+         	insert_symbol($1, LIT, UINT, NO_ATR, jiro_num);
+         else 
+         	err("invalid literal, constant %s is not unique value", $1);
+         $$ = UINT;
+  		}
   ;
   
 finish
