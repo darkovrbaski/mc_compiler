@@ -145,7 +145,7 @@ variable
   : _TYPE { tip = $1; } vars _SEMICOLON
       {
      		if (tip == VOID)
-  	  			err("variable declared void");
+  	  			err("invalid use of type 'void' in variable declaration");
       }
   ;
   
@@ -186,6 +186,7 @@ statement
   | if_statement
   | for_statement
   | jiro_statement
+  | fun_call_statement
   | return_statement
   ;
 
@@ -208,9 +209,15 @@ assignment_statement
 increment_statement
   : _ID _INC _SEMICOLON
       {
-        int idx = lookup_symbol($1, VAR|PAR);
-        if(idx == NO_INDEX)
-          err("'%s' undeclared", $1);
+        int idx;
+        idx = lookup_symbol($1, FUN);
+        if (idx != NO_INDEX)
+        	 err("'%s' function can not be incremented", $1);
+        else {
+		     idx = lookup_symbol($1, VAR|PAR);
+		     if(idx == NO_INDEX)
+		       err("'%s' undeclared", $1);
+		  }
       }
   ;
 
@@ -238,9 +245,15 @@ exp
       }
   | _ID _INC
   	  {
-        $$ = lookup_symbol($1, VAR|PAR);
-        if($$ == NO_INDEX)
-          err("'%s' undeclared", $1);
+  	  	  int idx;
+        idx = lookup_symbol($1, FUN);
+        if (idx != NO_INDEX)
+        	 err("'%s' function can not be incremented", $1);
+        else {
+		     $$ = lookup_symbol($1, VAR|PAR);
+		     if($$ == NO_INDEX)
+		     	err("'%s' undeclared", $1);
+		  }
       }
   | function_call
   | _LPAREN num_exp _RPAREN
@@ -272,6 +285,10 @@ function_call
         $$ = FUN_REG;
         arg_num = 0;
       }
+  ;
+  
+fun_call_statement
+  : function_call _SEMICOLON
   ;
 
 argument_list
