@@ -1,4 +1,4 @@
-//OPIS:  sabiranje i oduzimanje pogresan tip 
+//OPIS: mnozenje i deljenje
 
 int main() {
   int a = 2;

@@ -1,5 +1,9 @@
 //OPIS: Sanity check za miniC gramatiku
 
+/*
+	Viselinijski komentar
+*/
+
 int f(int x) {
     int y;
     return x + 2 - y;
