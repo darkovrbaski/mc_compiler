@@ -8,6 +8,15 @@ semantic.output
 semantic.tab.c
 semantic.tab.h
 
+# Hipsim and Micko compiled files
+hipsim
+hipsim-src/
+micko
+micko.output
+micko.tab.c
+micko.tab.h
+*.asm
+
 # Prerequisites
 *.d
 
