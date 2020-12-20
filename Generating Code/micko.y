@@ -16,8 +16,10 @@
   int error_count = 0;
   int warning_count = 0;
   int var_num = 0;
+  
   int fun_idx = -1;
   int fcall_idx = -1;
+  
   int lab_num = -1;
   FILE *output;
 %}
@@ -38,10 +40,21 @@
 %token _RPAREN
 %token _LBRACKET
 %token _RBRACKET
+%token _LSBRAC
+%token _RSBRAC
 %token _ASSIGN
 %token _SEMICOLON
 %token <i> _AROP
 %token <i> _RELOP
+%token _COMMA
+%token _INC
+%token _FOR
+%token _JIRO
+%token _TRANGA
+%token _ARROW
+%token _FINISH
+%token _TOERANA
+%token <i> _MDOP
 
 %type <i> num_exp exp literal
 %type <i> function_call argument rel_exp if_part
