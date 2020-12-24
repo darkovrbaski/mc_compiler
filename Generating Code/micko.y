@@ -44,9 +44,11 @@
 %token _RSBRAC
 %token _ASSIGN
 %token _SEMICOLON
+%token _COLON
 %token <i> _AROP
 %token <i> _RELOP
 %token _COMMA
+%token _QMARK
 %token _INC
 %token _FOR
 %token _JIRO
@@ -56,7 +58,7 @@
 %token _TOERANA
 %token <i> _MDOP
 
-%type <i> num_exp exp literal
+%type <i> num_exp exp literal ternarni_operator exp_var_const
 %type <i> function_call argument rel_exp if_part
 
 %nonassoc ONLY_IF
@@ -280,7 +282,54 @@ exp
   
   | _LPAREN num_exp _RPAREN
       { $$ = $2; }
+      
+  | ternarni_operator
+      { $$ = $1; }
+
   ;
+
+ternarni_operator
+  : _LPAREN rel_exp
+      {
+        $<i>$ = ++lab_num;
+        code("\n@ternarni%d:", lab_num);
+        code("\n\t\t%s\t@false%d", opp_jumps[$2], $<i>$);
+        code("\n@true%d:", $<i>$);
+      }
+    _RPAREN _QMARK exp_var_const
+      {
+        $<i>$ = take_reg();
+        gen_mov($6, $<i>$);
+        code("\n\t\tJMP \t@exit%d", $<i>3);
+        code("\n@false%d:", $<i>3);
+      }
+     _COLON exp_var_const
+      { 
+        gen_mov($9, $<i>7);
+        if(get_type($6) != get_type($9)) {
+         err("incompatible type in conditional exp");
+        }
+        code("\n@exit%d:", $<i>3);
+        $$ = $<i>7;
+      }
+
+  ;
+
+exp_var_const
+  : literal
+      {
+        $$ = $1;
+      }
+  | _ID
+      {
+        $$ = lookup_symbol($1, VAR|PAR|GVAR);
+        if($$ == NO_INDEX) {
+          err("'%s' undeclared", $1);
+        }
+      }
+
+  ;
+
 
 literal
   : _INT_NUMBER

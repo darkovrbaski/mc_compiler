@@ -30,8 +30,10 @@
 "["                  { return _LSBRAC; }
 "]"                  { return _RSBRAC; }
 ";"                  { return _SEMICOLON; }
+":"                  { return _COLON; }
 "="                  { return _ASSIGN; }
 ","                  { return _COMMA; }
+"?"                  { return _QMARK; }
 
 "+"                  { yylval.i = ADD; return _AROP; }
 "-"                  { yylval.i = SUB; return _AROP; }
