@@ -65,10 +65,28 @@
 %%
 
 program
-  : function_list
+  : global_variable_list function_list
       {  
         if(lookup_symbol("main", FUN) == NO_INDEX)
           err("undefined reference to 'main'");
+      }
+  ;
+
+global_variable_list
+  : /* empty */
+  | global_variable_list global_variable
+  ;
+
+global_variable
+  : _TYPE _ID _SEMICOLON
+      {
+        if(lookup_symbol($2, GVAR) == NO_INDEX) {
+           insert_symbol($2, GVAR, $1, NO_ATR, NO_ATR);
+           code("\n%s:", $2);
+           code("\n\t\tWORD\t1");
+        }
+        else 
+           err("redefinition of global '%s'", $2);
       }
   ;
 
@@ -147,6 +165,7 @@ statement_list
 statement
   : compound_statement
   | assignment_statement
+  | increment_statement
   | if_statement
   | return_statement
   ;
@@ -158,13 +177,50 @@ compound_statement
 assignment_statement
   : _ID _ASSIGN num_exp _SEMICOLON
       {
-        int idx = lookup_symbol($1, VAR|PAR);
+        int idx = lookup_symbol($1, VAR|PAR|GVAR);
         if(idx == NO_INDEX)
           err("invalid lvalue '%s' in assignment", $1);
         else
           if(get_type(idx) != get_type($3))
             err("incompatible types in assignment");
+        for (int i=0; i< SYMBOL_TABLE_LENGTH ;i++) {
+          if (get_atr2(i) == 5 && get_kind(i) != LIT) {
+            int t1 = get_type(i);    
+            code("\n\t\t%s\t", ar_instructions[0 + (t1 - 1) * AROP_NUMBER]);
+            gen_sym_name(i);
+            code(",");
+            code("$1");
+            code(",");
+            gen_sym_name(i);
+            free_if_reg(i);
+            set_atr2(i, NO_ATR);
+          }
+        }
         gen_mov($3, idx);
+      }
+  ;
+  
+increment_statement
+  : _ID _INC _SEMICOLON
+      {
+        int idx;
+        idx = lookup_symbol($1, FUN);
+        if (idx != NO_INDEX) {
+        	 err("'%s' function can not be incremented", $1);
+        }
+        else {
+		     idx = lookup_symbol($1, VAR|PAR|GVAR);
+		     if(idx == NO_INDEX)
+		       err("'%s' undeclared", $1);
+		  }
+		  int t1 = get_type(idx);    
+        code("\n\t\t%s\t", ar_instructions[0 + (t1 - 1) * AROP_NUMBER]);
+        gen_sym_name(idx);
+        code(",");
+        code("$1");
+        code(",");
+        gen_sym_name(idx);
+        free_if_reg(idx);
       }
   ;
 
@@ -194,9 +250,26 @@ exp
 
   | _ID
       {
-        $$ = lookup_symbol($1, VAR|PAR);
-        if($$ == NO_INDEX)
+        $$ = lookup_symbol($1, VAR|PAR|GVAR);
+        if($$ == NO_INDEX) {
           err("'%s' undeclared", $1);
+        }
+      }
+
+  | _ID _INC
+  	  {
+  	  	  int idx;
+        idx = lookup_symbol($1, FUN);
+        if (idx != NO_INDEX) {
+        	 err("'%s' function can not be incremented", $1);
+        }
+        else {
+		     $$ = lookup_symbol($1, VAR|PAR|GVAR);
+		     if($$ == NO_INDEX) {
+		     	err("'%s' undeclared", $1);
+		     }
+		  }
+        set_atr2($$, 5);
       }
 
   | function_call
