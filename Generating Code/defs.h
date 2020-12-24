@@ -33,8 +33,7 @@ enum kinds { NO_KIND = 0x1, REG = 0x2, LIT = 0x4,
 enum arops { ADD, SUB, MUL, DIV, AROP_NUMBER };
 //stringovi za generisanje aritmetickih naredbi
 static char *ar_instructions[] = { "ADDS", "SUBS", "MULS", "DIVS",
-                                   "ADDU", "SUBU", "MULU", "DIVU" };
-
+                                   "ADDU", "SUBU", "MULU", "DIVU"};
 //konstante relacionih operatora
 enum relops { LT, GT, LE, GE, EQ, NE, RELOP_NUMBER };
 //stringovi za JMP narebu

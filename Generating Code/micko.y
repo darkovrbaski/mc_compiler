@@ -19,6 +19,16 @@
   
   int fun_idx = -1;
   int fcall_idx = -1;
+  int fun_args[100];
+  int par_num = 0;
+  int par_in_f = 0;
+  int arg_num = 0;
+  
+  int tip = 0;
+  
+  int return_exist = 0;
+  
+  int jiro_num = 0;
   
   int lab_num = -1;
   FILE *output;
@@ -58,8 +68,10 @@
 %token _TOERANA
 %token <i> _MDOP
 
-%type <i> num_exp exp literal ternarni_operator exp_var_const
-%type <i> function_call argument rel_exp if_part
+%type <i> num_exp mul_exp exp literal
+%type <i> function_call argument argument_list rel_exp if_part
+//%type <i> tranga_lit tranga tranga_list
+%type <i> ternarni_operator exp_var_const
 
 %nonassoc ONLY_IF
 %nonassoc _ELSE
@@ -102,7 +114,7 @@ function
       {
         fun_idx = lookup_symbol($2, FUN);
         if(fun_idx == NO_INDEX)
-          fun_idx = insert_symbol($2, FUN, $1, NO_ATR, NO_ATR);
+          fun_idx = insert_symbol($2, FUN, $1, NO_ATR, par_num + 1);
         else 
           err("redefinition of function '%s'", $2);
 
@@ -110,10 +122,11 @@ function
         code("\n\t\tPUSH\t%%14");
         code("\n\t\tMOV \t%%15,%%14");
       }
-    _LPAREN parameter _RPAREN body
+    _LPAREN parameter_list _RPAREN body
       {
         clear_symbols(fun_idx + 1);
         var_num = 0;
+        par_in_f = 0;
         
         code("\n@%s_exit:", $2);
         code("\n\t\tMOV \t%%14,%%15");
@@ -122,40 +135,83 @@ function
       }
   ;
 
-parameter
+parameter_list
   : /* empty */
-      { set_atr1(fun_idx, 0); }
+      { set_atr1(fun_idx, 0); set_atr2(fun_idx, NO_ATR); }
+  | parameters
+  ;
 
-  | _TYPE _ID
+parameters
+  : parameter
+  | parameters _COMMA parameter
+  ;
+
+parameter
+  : _TYPE _ID
       {
-        insert_symbol($2, PAR, $1, 1, NO_ATR);
-        set_atr1(fun_idx, 1);
-        set_atr2(fun_idx, $1);
+        if ($1 == VOID) {
+         err("invalid use of type 'void' in parameter declaration");
+        }
+        insert_symbol($2, PAR, $1, ++par_in_f, NO_ATR);
+        ++par_num;
+        set_atr1(fun_idx, par_num);
+        fun_args[par_num] = $1;
       }
   ;
 
 body
   : _LBRACKET variable_list
       {
-        if(var_num)
+        if(var_num) {
           code("\n\t\tSUBS\t%%15,$%d,%%15", 4*var_num);
+        }
         code("\n@%s_body:", get_name(fun_idx));
       }
     statement_list _RBRACKET
+  	   {
+  	     if (return_exist == 0 && get_type(fun_idx) != VOID) {
+  	      warning("no return_statement in function");
+  		  }
+        return_exist = 0;
+  		}
   ;
 
 variable_list
   : /* empty */
   | variable_list variable
   ;
-
+  
 variable
-  : _TYPE _ID _SEMICOLON
+  : _TYPE { tip = $1; } vars _SEMICOLON
       {
-        if(lookup_symbol($2, VAR|PAR) == NO_INDEX)
-           insert_symbol($2, VAR, $1, ++var_num, NO_ATR);
+         if (tip == VOID){
+            err("invalid use of type 'void' in variable declaration");
+         }
+      }
+  ;
+  
+vars
+  : var_assig
+  | vars _COMMA var_assig
+  ;
+
+var_assig
+  : _ID
+      {	
+        if(lookup_symbol($1, VAR|PAR) == NO_INDEX)
+           insert_symbol($1, VAR, tip, ++var_num, NO_ATR);
         else 
-           err("redefinition of '%s'", $2);
+           err("redefinition of '%s'", $1);
+      }
+  | _ID _ASSIGN num_exp
+   	{
+        if(lookup_symbol($1, VAR|PAR) == NO_INDEX) {
+         insert_symbol($1, VAR, tip, ++var_num, NO_ATR);
+         if(tip != get_type($3))
+            err("incompatible types in assignment");
+        }
+        else 
+           err("redefinition of '%s'", $1);
       }
   ;
 
@@ -169,6 +225,9 @@ statement
   | assignment_statement
   | increment_statement
   | if_statement
+//  | for_statement
+//  | jiro_statement
+  | fun_call_statement
   | return_statement
   ;
 
@@ -227,9 +286,28 @@ increment_statement
   ;
 
 num_exp
-  : exp
+  : mul_exp
+  | num_exp _AROP mul_exp
+      {
+        if(get_type($1) != get_type($3))
+          err("invalid operands: arithmetic operation");
+        int t1 = get_type($1);    
+        code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
+        gen_sym_name($1);
+        code(",");
+        gen_sym_name($3);
+        code(",");
+        free_if_reg($3);
+        free_if_reg($1);
+        $$ = take_reg();
+        gen_sym_name($$);
+        set_type($$, t1);
+      }
+  ;
 
-  | num_exp _AROP exp
+mul_exp
+  : exp
+  | mul_exp _MDOP exp
       {
         if(get_type($1) != get_type($3))
           err("invalid operands: arithmetic operation");
@@ -249,7 +327,6 @@ num_exp
 
 exp
   : literal
-
   | _ID
       {
         $$ = lookup_symbol($1, VAR|PAR|GVAR);
@@ -257,7 +334,6 @@ exp
           err("'%s' undeclared", $1);
         }
       }
-
   | _ID _INC
   	  {
   	  	  int idx;
@@ -273,25 +349,21 @@ exp
 		  }
         set_atr2($$, 5);
       }
-
   | function_call
       {
         $$ = take_reg();
         gen_mov(FUN_REG, $$);
       }
-  
   | _LPAREN num_exp _RPAREN
       { $$ = $2; }
-      
   | ternarni_operator
       { $$ = $1; }
-
   ;
 
 ternarni_operator
   : _LPAREN rel_exp
       {
-        $<i>$ = ++lab_num;
+        $<i>$ = ++lab_num  ;
         code("\n@ternarni%d:", lab_num);
         code("\n\t\t%s\t@false%d", opp_jumps[$2], $<i>$);
         code("\n@true%d:", $<i>$);
@@ -346,30 +418,51 @@ function_call
         if(fcall_idx == NO_INDEX)
           err("'%s' is not a function", $1);
       }
-    _LPAREN argument _RPAREN
+    _LPAREN argument_list _RPAREN
       {
-        if(get_atr1(fcall_idx) != $4)
-          err("wrong number of arguments");
+        if(get_atr1(fcall_idx) - get_atr2(fcall_idx) + 1 != $4) {
+           if (get_atr1(fcall_idx) != 0) {
+             err("wrong number of args to function '%s'", 
+               get_name(fcall_idx));
+           }
+        }
         code("\n\t\t\tCALL\t%s", get_name(fcall_idx));
         if($4 > 0)
           code("\n\t\t\tADDS\t%%15,$%d,%%15", $4 * 4);
         set_type(FUN_REG, get_type(fcall_idx));
         $$ = FUN_REG;
+        arg_num = 0;
       }
   ;
+  
+fun_call_statement
+  : function_call _SEMICOLON
+  ;
+  
+argument_list
+	: /* empty */
+		{ $$ = 0; }
+	| arguments
+		{ $$ = arg_num; }
+	;
+	
+arguments
+	: argument
+	| arguments _COMMA argument
+	;
 
 argument
-  : /* empty */
-    { $$ = 0; }
-
-  | num_exp
-    { 
-      if(get_atr2(fcall_idx) != get_type($1))
-        err("incompatible type for argument");
+   : num_exp
+    {
+      int i = get_atr2(fcall_idx) + arg_num;
+      if(fun_args[i] != get_type($1)) {
+        err("incompatible type for argument in '%s'",
+		      get_name(fcall_idx));
+		}
+		++arg_num;
       free_if_reg($1);
       code("\n\t\t\tPUSH\t");
       gen_sym_name($1);
-      $$ = 1;
     }
   ;
 
@@ -413,10 +506,22 @@ rel_exp
 
 
 return_statement
-  : _RETURN num_exp _SEMICOLON
+  : _RETURN _SEMICOLON
       {
-        if(get_type(fun_idx) != get_type($2))
-          err("incompatible types in return");
+        if(get_type(fun_idx) != VOID)
+         warning("return_statement with no value, in function returning value");
+         return_exist = 1;
+        code("\n\t\tJMP \t@%s_exit", get_name(fun_idx));
+      }
+  | _RETURN num_exp _SEMICOLON
+      {
+        if(get_type(fun_idx) == VOID) {
+         err("return_statement with a value, in void function");
+        }
+        else if(get_type(fun_idx) != get_type($2)) {
+         err("incompatible types in return");
+        }
+        return_exist = 1;
         gen_mov($2, FUN_REG);
         code("\n\t\tJMP \t@%s_exit", get_name(fun_idx));        
       }
