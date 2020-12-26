@@ -301,18 +301,19 @@ num_exp
       {
         if (get_type($1) != get_type($3)) {
           err("invalid operands: arithmetic operation");
+        } else {
+          int t1 = get_type($1);    
+          code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
+          gen_sym_name($1);
+          code(",");
+          gen_sym_name($3);
+          code(",");
+          free_if_reg($3);
+          free_if_reg($1);
+          $$ = take_reg();
+          gen_sym_name($$);
+          set_type($$, t1);
         }
-        int t1 = get_type($1);    
-        code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
-        gen_sym_name($1);
-        code(",");
-        gen_sym_name($3);
-        code(",");
-        free_if_reg($3);
-        free_if_reg($1);
-        $$ = take_reg();
-        gen_sym_name($$);
-        set_type($$, t1);
       }
   ;
 
@@ -322,18 +323,19 @@ mul_exp
       {
         if (get_type($1) != get_type($3)) {
           err("invalid operands: arithmetic operation");
+        } else {
+          int t1 = get_type($1);    
+          code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
+          gen_sym_name($1);
+          code(",");
+          gen_sym_name($3);
+          code(",");
+          free_if_reg($3);
+          free_if_reg($1);
+          $$ = take_reg();
+          gen_sym_name($$);
+          set_type($$, t1);
         }
-        int t1 = get_type($1);    
-        code("\n\t\t%s\t", ar_instructions[$2 + (t1 - 1) * AROP_NUMBER]);
-        gen_sym_name($1);
-        code(",");
-        gen_sym_name($3);
-        code(",");
-        free_if_reg($3);
-        free_if_reg($1);
-        $$ = take_reg();
-        gen_sym_name($$);
-        set_type($$, t1);
       }
   ;
 
@@ -541,7 +543,7 @@ for_statement
 jiro_statement
   : _JIRO _LSBRAC _ID
       { 
-        int idx = lookup_symbol($3, VAR|PAR);
+        int idx = lookup_symbol($3, VAR|PAR|GVAR);
         if (idx == NO_INDEX)
           err("'%s' undeclared", $3);
           $<i>$ = get_last_element();
@@ -549,7 +551,7 @@ jiro_statement
       }
     _RSBRAC _LBRACKET tranga_list toerana _RBRACKET
       {
-        int idx = lookup_symbol($3, VAR|PAR);
+        int idx = lookup_symbol($3, VAR|PAR|GVAR);
         if (get_type(idx) != $7) {
           err("incompatible types in <jiro_expression>");
         }
