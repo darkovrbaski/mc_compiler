@@ -31,6 +31,7 @@
   int jiro_num = 0;
   
   int lab_num = -1;
+  int for_lab_num = -1;
   FILE *output;
 %}
 
@@ -518,25 +519,43 @@ rel_exp
   ;
 
 for_statement
-  : _FOR _LPAREN _TYPE _ID _ASSIGN literal
+  : _FOR _LPAREN 
       {
-        if ($3 != get_type($6)) {
+        $<i>$ = ++for_lab_num;
+      }
+   _TYPE _ID _ASSIGN literal
+      {
+        if ($4 != get_type($7)) {
           err("incompatible types in assignment");
         }
-        $<i>$ = insert_symbol($4, VAR, $3, NO_ATR, NO_ATR);
+        $<i>$ = insert_symbol($5, VAR, $4, NO_ATR, NO_ATR);
+        gen_mov($7, $<i>$);
+        code("\n@for%d:", $<i>3);
       }
    _SEMICOLON rel_exp _SEMICOLON literal
       {
-        if ($3 != get_type($11)) {
+        if ($4 != get_type($12)) {
           err("incompatible types in assignment");
         }
-        if (atoi(get_name($11)) == 0) {
+        if (atoi(get_name($12)) == 0) {
           err("invalid literal, the step must be nonzero value");
         }
+        code("\n\t\t%s\t@for_exit%d", opp_jumps[$10], $<i>3); 
+        code("\n@for_true%d:", $<i>3);
       }
    _RPAREN statement
       {
-        clear_symbols($<i>7 - 1);
+        int t1 = get_type($<i>8);    
+        code("\n\t\t%s\t", ar_instructions[0 + (t1 - 1) * AROP_NUMBER]);
+        gen_sym_name($<i>8);
+        code(",");
+        gen_sym_name($12);
+        code(",");
+        gen_sym_name($<i>8);
+        free_if_reg($<i>8);
+        code("\n\t\tJMP \t@for%d", $<i>3);
+        code("\n@for_exit%d:", $<i>3);
+        clear_symbols($<i>8 - 1);
       }
   ;
   

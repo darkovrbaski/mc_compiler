@@ -1,4 +1,6 @@
 //OPIS: ugnjezdeni for iskaz
+//RETURN: 12
+
 int main() {
     int a,b,c;
     b = 10;
@@ -8,4 +10,5 @@ int main() {
     		c = c - 1;
     	}
     }
+    return c;
 }
