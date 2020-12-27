@@ -1,4 +1,5 @@
 //OPIS: razlicit tip tranga konstanti
+
 int main() {
     int b,c,a = 5;
     
@@ -13,5 +14,6 @@ int main() {
 		toerana ->
 			a = a + b;
 	 }
+	 return 0;
 }
 

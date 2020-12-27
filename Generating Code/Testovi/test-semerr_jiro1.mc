@@ -1,8 +1,9 @@
 //OPIS: ne deklarisan <jiro_expression>
+
 int main() {
-    int b,c;
+    int a,b;
     
-    jiro [a]{
+    jiro [c]{
 		tranga 1 ->
 			a = a + 5;
 			finish;
@@ -13,5 +14,6 @@ int main() {
 		toerana ->
 			a = a + b;
 	 }
+	 return 0;
 }
 

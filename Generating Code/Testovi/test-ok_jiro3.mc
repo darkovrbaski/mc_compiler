@@ -1,6 +1,7 @@
 //OPIS: ugnjezdeni jiro
+//RETURN: 3
 int main() {
-    int b,c,a = 1;
+    int b,c,a = 2;
     unsigned z = 2u;
     
     jiro [a]{
@@ -21,6 +22,7 @@ int main() {
 					a = a + b;
 	 		}
 		}
+		finish;
 		tranga 3 ->
 				{
 					b = 3;
@@ -28,5 +30,6 @@ int main() {
 		toerana ->
 			a = a + b;
 	 }
+	 return b;
 }
 

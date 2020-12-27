@@ -28,10 +28,14 @@
   
   int return_exist = 0;
   
-  int jiro_num = 0;
-  
   int lab_num = -1;
+  int ternarni_lab_num = -1;
   int for_lab_num = -1;
+  
+  int jiro_lab_num = 0;
+  int jiro_num = 0;
+  int jiro_idx[100]; 
+  
   FILE *output;
 %}
 
@@ -71,7 +75,7 @@
 
 %type <i> num_exp mul_exp exp literal
 %type <i> function_call argument argument_list rel_exp if_part
-%type <i> tranga_lit tranga tranga_list
+%type <i> tranga_lit
 %type <i> ternarni_operator exp_var_const
 
 %nonassoc ONLY_IF
@@ -378,17 +382,17 @@ exp
 ternarni_operator
   : _LPAREN rel_exp
       {
-        $<i>$ = ++lab_num  ;
-        code("\n@ternarni%d:", lab_num);
-        code("\n\t\t%s\t@false%d", opp_jumps[$2], $<i>$);
-        code("\n@true%d:", $<i>$);
+        $<i>$ = ++ternarni_lab_num  ;
+        code("\n@ternarni%d:", ternarni_lab_num);
+        code("\n\t\t%s\t@ternarni_false%d", opp_jumps[$2], $<i>$);
+        code("\n@ternarni_true%d:", $<i>$);
       }
     _RPAREN _QMARK exp_var_const
       {
         $<i>$ = take_reg();
         gen_mov($6, $<i>$);
-        code("\n\t\tJMP \t@exit%d", $<i>3);
-        code("\n@false%d:", $<i>3);
+        code("\n\t\tJMP \t@ternarni_exit%d", $<i>3);
+        code("\n@ternarni_false%d:", $<i>3);
       }
      _COLON exp_var_const
       { 
@@ -396,7 +400,7 @@ ternarni_operator
         if (get_type($6) != get_type($9)) {
           err("incompatible type in conditional exp");
         }
-        code("\n@exit%d:", $<i>3);
+        code("\n@ternarni_exit%d:", $<i>3);
         $$ = $<i>7;
       }
   ;
@@ -560,79 +564,116 @@ for_statement
   ;
   
 jiro_statement
-  : _JIRO _LSBRAC _ID
-      { 
-        int idx = lookup_symbol($3, VAR|PAR|GVAR);
-        if (idx == NO_INDEX)
-          err("'%s' undeclared", $3);
-          $<i>$ = get_last_element();
-          jiro_num++;
-      }
-    _RSBRAC _LBRACKET tranga_list toerana _RBRACKET
+  : _JIRO _LSBRAC 
       {
-        int idx = lookup_symbol($3, VAR|PAR|GVAR);
-        if (get_type(idx) != $7) {
-          err("incompatible types in <jiro_expression>");
+        $<i>$ = ++jiro_lab_num;
+        ++jiro_num;
+        code("\n@jiro%d:", jiro_lab_num);
+        code("\n\t\tJMP \t@jiro_compare%d", jiro_lab_num);
+      }
+    _ID
+      {
+        int idx = lookup_symbol($4, VAR|PAR|GVAR);
+        if (idx == NO_INDEX) {
+          err("'%s' undeclared", $4);
         }
+        jiro_idx[jiro_num] = idx;
+        set_atr2(idx, $<i>3);
+        $<i>$ = get_last_element();
+      }
+    _RSBRAC _LBRACKET tranga_list 
+      {
+        code("\n@tranga_exit%d:", $<i>3);
+        code("\n\t\tJMP \t@jiro_exit%d", $<i>3); 
+      }
+    toerana _RBRACKET
+      {
+        int idx = lookup_symbol($4, VAR|PAR|GVAR);
+        //if (get_type(idx) != get_type($8)) {
+        //  err("incompatible types in <jiro_expression>");
+        //}
+        code("\n@jiro_compare%d:", $<i>3);
+        for (int i = 0; i < SYMBOL_TABLE_LENGTH; i++) {
+          if (get_atr2(i) == $<i>3 && get_kind(i) == LIT) {
+            gen_cmp(idx, i);
+            code("\n\t\tJEQ \t@tranga%d_%s", $<i>3, get_name(i));
+          }
+        }
+        code("\n\t\tJMP \t@toerana%d", $<i>3);
+        code("\n@jiro_exit%d:", $<i>3);
+        
+        set_atr2(idx, NO_ATR);
         jiro_num--;
-        clear_symbols($<i>4 + 1);
+        clear_symbols($<i>5 + 1);
       }
   ;
   
 tranga_list
   : tranga
-      {
-        $$ = $1;
-      }
   | tranga_list tranga
-      {
-        $$ = $1;
-        if ($1 != $2) {
-          err("incompatible type in <constant_expression>");
-        }
-      }
   ;
   
 tranga
-  : _TRANGA tranga_lit _ARROW statement finish
+  : _TRANGA tranga_lit 
       {
-        $$ = $2;
+        code("\n@tranga%d_%s:", get_atr2(jiro_idx[jiro_num]), get_name($2));
       }
+    _ARROW statement finish
   ;
   
 tranga_lit
   : _INT_NUMBER
       {
         int idx = lookup_symbol($1, LIT);
-        if (idx == NO_INDEX)
-          insert_symbol($1, LIT, INT, NO_ATR, jiro_num);
-        else if (get_atr2(idx) != jiro_num)
-          insert_symbol($1, LIT, INT, NO_ATR, jiro_num);
-        else 
+        if (get_type(jiro_idx[jiro_num]) != INT) {
+          err("incompatible types of jiro const %s", $1);
+        }
+        if (idx == NO_INDEX) {
+          $$ = insert_symbol($1, LIT, INT, NO_ATR, get_atr2(jiro_idx[jiro_num]));
+        }
+        else if (get_atr2(idx) != get_atr2(jiro_idx[jiro_num])) {
+          $$ = insert_symbol($1, LIT, INT, NO_ATR, get_atr2(jiro_idx[jiro_num]));
+        }
+        else {
           err("invalid literal, constant %s is not unique value", $1);
-        $$ = INT;
+        }
       }
   | _UINT_NUMBER
       {
         int idx = lookup_symbol($1, LIT);
-        if (idx == NO_INDEX)
-          insert_symbol($1, LIT, UINT, NO_ATR, jiro_num);
-        else if (get_atr2(idx) != jiro_num)
-          insert_symbol($1, LIT, UINT, NO_ATR, jiro_num);
-        else
+        if (get_type(jiro_idx[jiro_num]) != UINT) {
+          err("incompatible types of jiro const %s", $1);
+        }
+        if (idx == NO_INDEX) {
+          $$ = insert_symbol($1, LIT, UINT, NO_ATR, get_atr2(jiro_idx[jiro_num]));
+        }
+        else if (get_atr2(idx) != get_atr2(jiro_idx[jiro_num])) {
+          $$ = insert_symbol($1, LIT, UINT, NO_ATR, get_atr2(jiro_idx[jiro_num]));
+        }
+        else {
           err("invalid literal, constant %s is not unique value", $1);
-        $$ = UINT;
+        }
       }
   ;
   
 finish
   : /* empty */
   | _FINISH _SEMICOLON
+      {
+        code("\n\t\tJMP \t@tranga_exit%d", get_atr2(jiro_idx[jiro_num]));
+      }
   ;
   
 toerana
   : /* empty */
-  | _TOERANA _ARROW statement
+  | _TOERANA _ARROW 
+      {
+        code("\n@toerana%d:", get_atr2(jiro_idx[jiro_num]));
+      }
+  statement
+      {
+        code("\n\t\tJMP \t@jiro_exit%d", get_atr2(jiro_idx[jiro_num]));
+      }
   ;
 
 return_statement

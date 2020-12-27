@@ -1,4 +1,6 @@
 //OPIS: primer dva jiro iskaza jedan za drugim 
+//RETURN: 6
+
 int main() {
     int a = 5, b = 5;
     
@@ -8,7 +10,7 @@ int main() {
 			finish;
 		tranga 5 ->
 		{
-			b = 3;
+			a = 1;
 		}
 		tranga 6 -> b = 3;
 		toerana ->
@@ -27,4 +29,5 @@ int main() {
 		toerana ->
 			a = a + b;
 	 }
+	 return 6;
 }
