@@ -34,7 +34,7 @@
   
   int jiro_lab_num = 0;
   int jiro_num = 0;
-  int jiro_idx[100]; 
+  int jiro_idx[100];
   
   FILE *output;
 %}
@@ -259,7 +259,7 @@ assignment_statement
           }
         }
         for (int i = 0; i < SYMBOL_TABLE_LENGTH; i++) {
-          if (get_atr2(i) == 5 && get_kind(i) != LIT) {
+          if (get_atr2(i) >= 100 && get_kind(i) != LIT) {
             int t1 = get_type(i);    
             code("\n\t\t%s\t", ar_instructions[0 + (t1 - 1) * AROP_NUMBER]);
             gen_sym_name(i);
@@ -268,7 +268,7 @@ assignment_statement
             code(",");
             gen_sym_name(i);
             free_if_reg(i);
-            set_atr2(i, NO_ATR);
+            set_atr2(i, get_atr2(i) - 100);
           }
         }
         gen_mov($3, idx);
@@ -366,7 +366,7 @@ exp
            err("'%s' undeclared", $1);
          }
         }
-        set_atr2($$, 5);
+        set_atr2($$, get_atr2($$) + 100);
       }
   | function_call
       {
@@ -589,9 +589,6 @@ jiro_statement
     toerana _RBRACKET
       {
         int idx = lookup_symbol($4, VAR|PAR|GVAR);
-        //if (get_type(idx) != get_type($8)) {
-        //  err("incompatible types in <jiro_expression>");
-        //}
         code("\n@jiro_compare%d:", $<i>3);
         for (int i = 0; i < SYMBOL_TABLE_LENGTH; i++) {
           if (get_atr2(i) == $<i>3 && get_kind(i) == LIT) {
