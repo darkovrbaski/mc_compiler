@@ -260,6 +260,10 @@ assignment_statement
             err("incompatible types in assignment");
           }
         }
+        gen_mov($3, idx);
+        if (get_atr2(idx) >= 100) {
+          set_atr2(idx, get_atr2(idx) - 100);
+        }
         for (int i = 0; i < SYMBOL_TABLE_LENGTH; i++) {
           if (get_atr2(i) >= 100 && get_kind(i) != LIT) {
             int t1 = get_type(i);    
@@ -273,7 +277,6 @@ assignment_statement
             set_atr2(i, get_atr2(i) - 100);
           }
         }
-        gen_mov($3, idx);
       }
   ;
   
