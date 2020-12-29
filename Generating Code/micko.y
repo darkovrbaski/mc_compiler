@@ -22,7 +22,9 @@
   int fun_args[100];
   int par_num = 0;
   int par_in_f = 0;
+  
   int arg_num = 0;
+  int arguments[100];
   
   int tip = 0;
   
@@ -461,7 +463,13 @@ argument_list
   : /* empty */
       { $$ = 0; }
   | arguments
-      { $$ = arg_num; }
+      {
+        for (int i = arg_num - 1; i > -1; i--) {
+          code("\n\t\t\tPUSH\t");
+          gen_sym_name(arguments[i]);
+        }
+        $$ = arg_num;
+      }
   ;
 	
 arguments
@@ -477,10 +485,14 @@ argument
           err("incompatible type for argument in '%s'",
           get_name(fcall_idx));
         }
-        ++arg_num;
+        int idx = lookup_symbol(get_name($1), LIT|VAR|PAR|GVAR);
+        if (idx != NO_INDEX) {
+          arguments[arg_num] = idx;
+        } else {
+          arguments[arg_num] = $1;
+        }
         free_if_reg($1);
-        code("\n\t\t\tPUSH\t");
-        gen_sym_name($1);
+        ++arg_num;
       }
   ;
 

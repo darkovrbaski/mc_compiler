@@ -1,4 +1,4 @@
-//OPIS: funkcija sa vise parametra i poziv funkcije
+//OPIS: void funkcija sa vise parametra i poziv funkcije
 //RETURN: 0
 
 void f(int a, int b, unsigned c) {
